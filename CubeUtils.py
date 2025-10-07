@@ -24,6 +24,8 @@ import os
 import hashlib
 from typing import List, Tuple, Dict, Any
 
+order = 25
+
 # The face Dict
 FaceDict = {
     "F": 0, # Front
@@ -37,20 +39,21 @@ FaceDict = {
 # Dict to list all possible moves(max: move for Cubes of order 7)
 moveDict = {
     "L1": (0, 1), "L1'": (0, -1), "R1": (1, 1), "R1'": (1, -1),
-    "U1": (2, 1), "U1'": (2, -1), "D1": (3, 1), "D1'": (3, -1),
-    "L2": (4, 1), "L2'": (4, -1), "R2": (5, 1), "R2'": (5, -1),
-    "U2": (6, 1), "U2'": (6, -1), "D2": (7, 1), "D2'": (7, -1),
-    "L3": (8, 1), "L3'": (8, -1), "R3": (9, 1), "R3'": (9, -1),
-    "U3": (10, 1), "U3'": (10, -1), "D3": (11, 1), "D3'": (11, -1),
-    "L4": (12, 1), "L4'": (12, -1), "R4": (13, 1), "R4'": (13, -1),
-    "U4": (14, 1), "U4'": (14, -1), "D4": (15, 1), "D4'": (15, -1),
-    "L5": (16, 1), "L5'": (16, -1), "R5": (17, 1), "R5'": (17, -1),
-    "U5": (18, 1), "U5'": (18, -1), "D5": (19, 1), "D5'": (19, -1),
-    "L6": (20, 1), "L6'": (20, -1), "R6": (21, 1), "R6'": (21, -1),
-    "U6": (22, 1), "U6'": (22, -1), "D6": (23, 1), "D6'": (23, -1),
-    "L7": (24, 1), "L7'": (24, -1), "R7": (25, 1), "R7'": (25, -1),
-    "U7": (26, 1), "U7'": (26, -1), "D7": (27, 1), "D7'": (27, -1)
+    "U1": (2, 1), "U1'": (2, -1), "D1": (3, 1), "D1'": (3, -1)
 }
+
+# Functions to add more moves for larger cubes
+def add_moves_for_larger_cubes(order): 
+    for layer in range(2, order):
+        moveDict[f"L{layer}"] = (layer * 2, 1)
+        moveDict[f"L{layer}'"] = (layer * 2, -1)
+        moveDict[f"R{layer}"] = (layer * 2 + 1, 1)
+        moveDict[f"R{layer}'"] = (layer * 2 + 1, -1)
+        moveDict[f"U{layer}"] = (layer * 2 + 2, 1)
+        moveDict[f"U{layer}'"] = (layer * 2 + 2, -1)
+        moveDict[f"D{layer}"] = (layer * 2 + 3, 1)
+        moveDict[f"D{layer}'"] = (layer * 2 + 3, -1)
+
 
 class Cube:
     def __init__(self, order, cube_data=None):
@@ -445,7 +448,8 @@ def main():
     else:
         inputString = args.string
 
-    order = 7
+    global order
+    add_moves_for_larger_cubes(order)
     cubes = initCube(inputString, order)
 
     if args.mode == "encrypt":
