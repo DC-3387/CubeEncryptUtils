@@ -1,9 +1,9 @@
 # encoding:utf-8
 # @file CubeEncrypt.py
-# @brief Enhanced Cube encryption and decryption tool with multi-key support
+# @brief Enhanced Cube encryption and decryption tool with full cryptographic randomness
 # @author Dc-3387
 # @date 2024-06-20
-# @version 2.0
+# @version 4.0
 # @license AGPL-3.0
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import random
 import copy
 import argparse
 import json
 import os
 import hashlib
+import secrets
 from typing import List, Tuple, Dict, Any
 
 # The face Dict
@@ -34,28 +34,40 @@ FaceDict = {
     "R": 5  # Right
 }
 
-# Dict to list all possible moves(max: move for Cubes of order 7)
-# Dict to list all possible moves(max: move for Cubes of order 7)
-moveDict = {
-    "L1": (0, 1), "L1'": (0, -1), "R1": (1, 1), "R1'": (1, -1),
-    "U1": (2, 1), "U1'": (2, -1), "D1": (3, 1), "D1'": (3, -1),
-}
+# Global variables for cube order and move dictionary
+moveDict = {}
 
-order = 25  # Default cube order
+def initialize_move_dict(cube_order):
+    """Initialize move dictionary based on cube order"""
+    global moveDict
+    moveDict = {
+        "L1": (0, 1), "L1'": (0, -1), "R1": (1, 1), "R1'": (1, -1),
+        "U1": (2, 1), "U1'": (2, -1), "D1": (3, 1), "D1'": (3, -1),
+    }
+    
+    # Add more moves based on cube order
+    for i in range(1, cube_order):
+        moveDict[f"L{i+1}"] = (i*2, 1)
+        moveDict[f"L{i+1}'"] = (i*2, -1)
+        moveDict[f"R{i+1}"] = (i*2 + 1, 1)
+        moveDict[f"R{i+1}'"] = (i*2 + 1, -1)
+        moveDict[f"U{i+1}"] = (i*2 + 2, 1)
+        moveDict[f"U{i+1}'"] = (i*2 + 2, -1)
+        moveDict[f"D{i+1}"] = (i*2 + 3, 1)
+        moveDict[f"D{i+1}'"] = (i*2 + 3, -1)
 
-# function to use loop to add more moves to the moveDict
-def generate_moves(order):
-    for i in range(order):
-        layer = i * 2
-        moveDict[f"L{i+1}"] = (layer, 1)
-        moveDict[f"L{i+1}'"] = (layer, -1)
-        moveDict[f"R{i+1}"] = (layer + 1, 1)
-        moveDict[f"R{i+1}'"] = (layer + 1, -1)
-        moveDict[f"U{i+1}"] = (layer + 2, 1)
-        moveDict[f"U{i+1}'"] = (layer + 2, -1)
-        moveDict[f"D{i+1}"] = (layer + 3, 1)
-        moveDict[f"D{i+1}'"] = (layer + 3, -1)
+def generate_cryptographic_cube_order():
+    """Generate cryptographically secure random cube order between 8 and 100"""
+    return secrets.randbelow(93) + 8  # 8 to 100 inclusive
 
+def generate_cryptographic_num_moves():
+    """Generate cryptographically secure random number of moves between 256 and 65536"""
+    return secrets.randbelow(65281) + 256  # 256 to 65536 inclusive
+
+def generate_cryptographic_padding_chars():
+    """Generate cryptographically secure random padding characters"""
+    charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?~"
+    return ''.join(secrets.choice(charset) for _ in range(secrets.randbelow(100) + 50))
 
 class Cube:
     def __init__(self, order, cube_data=None):
@@ -205,7 +217,7 @@ class Cube:
         self.faces = self._linear_to_faces(value)
 
 
-def initCube(cubeString, order=7):
+def initCube(cubeString, order):
     cubeString = cubeString.replace(" ", "").replace("\n", "")
     totalChars = len(cubeString)
     charsPerCube = order * order * 6
@@ -219,7 +231,9 @@ def initCube(cubeString, order=7):
             if charIndex < totalChars:
                 ch = cubeString[charIndex]
             else:
-                ch = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+                # Use cryptographic randomness for padding
+                charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?~"
+                ch = secrets.choice(charset)
             cube_data.append(ch)
         cubes.append(Cube(order, cube_data))
     return cubes
@@ -229,10 +243,17 @@ def cubeToString(cube):
     return ''.join(cube.cube)
 
 
-def generateRandomMoves(numMoves):
+def generateCryptographicMoves(numMoves, cube_order):
+    """Generate cryptographically secure random moves"""
     moves = list(moveDict.keys())
-    randomMoves = random.choices(moves, k=numMoves)
-    return randomMoves
+    cryptographic_moves = []
+    
+    for _ in range(numMoves):
+        # Use secrets module for cryptographic randomness
+        move = secrets.choice(moves)
+        cryptographic_moves.append(move)
+    
+    return cryptographic_moves
 
 
 def applyMoves(cube, moves):
@@ -266,172 +287,56 @@ def encryptCube(cube, moves):
     return encryptedCube
 
 
-def generate_key_pool(num_cubes, moves_per_key=20, pool_multiplier=6):
+def encrypt_with_full_cryptographic_randomness(cubes):
     """
-    Generate a pool of random keys for encryption
-    
-    Args:
-        num_cubes: Number of cubes to encrypt
-        moves_per_key: Number of moves per key
-        pool_multiplier: Size of key pool (num_cubes * pool_multiplier)
-    
-    Returns:
-        List of random move sequences
-    """
-    pool_size = num_cubes * pool_multiplier
-    key_pool = []
-    
-    print(f"Generating key pool with {pool_size} keys...")
-    for i in range(pool_size):
-        moves = generateRandomMoves(moves_per_key)
-        key_pool.append(moves)
-    
-    return key_pool
-
-
-def selective_encrypt(cubes, key_pool, selection_method="random"):
-    """
-    Encrypt cubes using selective keys from the pool
+    Encrypt each cube with full cryptographic randomness
     
     Args:
         cubes: List of cubes to encrypt
-        key_pool: Pool of available keys
-        selection_method: How to select keys ('random', 'sequential', 'hash_based')
     
     Returns:
-        Tuple of (encrypted_cubes, used_key_indices)
+        Tuple of (encrypted_cubes, encryption_parameters)
     """
     encrypted_cubes = []
-    used_key_indices = []
+    all_encryption_params = []
     
     for i, cube in enumerate(cubes):
-        if selection_method == "random":
-            key_index = random.randint(0, len(key_pool) - 1)
-        elif selection_method == "sequential":
-            key_index = i % len(key_pool)
-        elif selection_method == "hash_based":
-            cube_hash = cube.get_state_hash()
-            key_index = int(cube_hash, 16) % len(key_pool)
-        else:
-            key_index = i % len(key_pool)
+        # Generate unique cryptographic random parameters for each cube
+        cube_order = generate_cryptographic_cube_order()
+        num_moves = generate_cryptographic_num_moves()
         
-        selected_moves = key_pool[key_index]
-        encrypted_cube = encryptCube(cube, selected_moves)
+        # Reinitialize move dictionary for this cube's order
+        initialize_move_dict(cube_order)
+        
+        # Generate cryptographic random moves
+        moves = generateCryptographicMoves(num_moves, cube_order)
+        
+        # Encrypt the cube
+        encrypted_cube = encryptCube(cube, moves)
         encrypted_cubes.append(encrypted_cube)
-        used_key_indices.append(key_index)
         
-        print(f"Cube {i} encrypted with key {key_index} ({len(selected_moves)} moves)")
-    
-    return encrypted_cubes, used_key_indices
-
-
-def brute_force_decrypt(encrypted_cubes, key_pool, max_attempts_per_cube=10):
-    """
-    Attempt to decrypt cubes using multiple keys from the pool
-    
-    Args:
-        encrypted_cubes: List of encrypted cubes
-        key_pool: Pool of possible keys
-        max_attempts_per_cube: Maximum number of keys to try per cube
-    
-    Returns:
-        List of decryption results with probabilities
-    """
-    results = []
-    
-    for i, encrypted_cube in enumerate(encrypted_cubes):
-        cube_results = []
-        attempts = min(max_attempts_per_cube, len(key_pool))
+        # Store encryption parameters
+        encryption_params = {
+            'cube_order': cube_order,
+            'num_moves': num_moves,
+            'moves': moves,
+            'original_cube_size': len(cube.cube)
+        }
+        all_encryption_params.append(encryption_params)
         
-        # Try multiple random keys
-        tested_indices = set()
-        for attempt in range(attempts):
-            # Ensure we don't test the same key twice
-            available_indices = [idx for idx in range(len(key_pool)) if idx not in tested_indices]
-            if not available_indices:
-                break
-                
-            key_index = random.choice(available_indices)
-            tested_indices.add(key_index)
-            
-            test_moves = key_pool[key_index]
-            decrypted_cube = decryptCube(encrypted_cube, test_moves)
-            decrypted_string = cubeToString(decrypted_cube)
-            
-            # Calculate readability score (simple heuristic)
-            readable_chars = sum(1 for c in decrypted_string if c.isalnum() or c in ' .,!?;:\'"-')
-            readability_score = readable_chars / len(decrypted_string)
-            
-            cube_results.append({
-                'key_index': key_index,
-                'decrypted_text': decrypted_string,
-                'readability_score': readability_score,
-                'key_moves': test_moves
-            })
-        
-        # Sort by readability score
-        cube_results.sort(key=lambda x: x['readability_score'], reverse=True)
-        results.append({
-            'cube_index': i,
-            'attempts': len(cube_results),
-            'best_result': cube_results[0] if cube_results else None,
-            'all_results': cube_results
-        })
+        print(f"Cube {i} encrypted with order {cube_order}, {num_moves} cryptographically random moves")
     
-    return results
-
-
-def save_decryption_results(results, output_dir):
-    """Save brute force decryption results to files"""
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    summary = []
-    for result in results:
-        cube_index = result['cube_index']
-        best_result = result['best_result']
-        
-        if best_result:
-            # Save best result
-            best_file = os.path.join(output_dir, f"cube_{cube_index}_best.txt")
-            with open(best_file, 'w') as f:
-                f.write(best_result['decrypted_text'])
-            
-            # Save all attempts
-            all_file = os.path.join(output_dir, f"cube_{cube_index}_all_attempts.json")
-            with open(all_file, 'w') as f:
-                json.dump(result['all_results'], f, indent=2, ensure_ascii=False)
-            
-            summary.append({
-                'cube_index': cube_index,
-                'best_score': best_result['readability_score'],
-                'best_key': best_result['key_index'],
-                'best_file': best_file
-            })
-    
-    # Save summary
-    summary_file = os.path.join(output_dir, "decryption_summary.json")
-    with open(summary_file, 'w') as f:
-        json.dump(summary, f, indent=2)
-    
-    return summary
+    return encrypted_cubes, all_encryption_params
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Enhanced Cube Encryption and Decryption Tool")
-    parser.add_argument("-mode", choices=["encrypt", "decrypt", "bruteforce"], required=True, 
-                       help="Operation mode: encrypt, decrypt, or bruteforce")
+    parser = argparse.ArgumentParser(description="Fully Cryptographically Random Cube Encryption and Decryption Tool")
+    parser.add_argument("-mode", choices=["encrypt", "decrypt"], required=True, 
+                       help="Operation mode: encrypt or decrypt")
     parser.add_argument("-s", "--string", type=str, help="String to encrypt/decrypt")
     parser.add_argument("-f", "--file", type=str, help="File to read input string from")
     parser.add_argument("-k", "--key", type=str, required=True, help="Key file to save/load encryption keys")
     parser.add_argument("-o", "--output", type=str, required=True, help="Output file to save the result")
-    parser.add_argument("-n", "--num_moves", type=int, default=20, help="Number of moves per key (default: 20)")
-    parser.add_argument("--key_pool_size", type=int, default=6, help="Key pool multiplier (default: 6)")
-    parser.add_argument("--selection", choices=["random", "sequential", "hash_based"], default="random",
-                       help="Key selection method for encryption")
-    parser.add_argument("--max_attempts", type=int, default=10, help="Max attempts per cube for bruteforce")
-    parser.add_argument("--results_dir", type=str, default="decryption_results", 
-                       help="Directory for bruteforce results")
     
     args = parser.parse_args()
 
@@ -450,27 +355,33 @@ def main():
     else:
         inputString = args.string
 
-    global order
-    generate_moves(order)  # Generate moves for the specified order
-    cubes = initCube(inputString, order)
-
     if args.mode == "encrypt":
-        # Generate key pool
-        key_pool = generate_key_pool(len(cubes), args.num_moves, args.key_pool_size)
+        print("Generating cryptographically secure random parameters...")
         
-        # Encrypt cubes using selective keys
-        encrypted_cubes, used_key_indices = selective_encrypt(cubes, key_pool, args.selection)
+        # For encryption, we'll use a base order to initialize the first cube
+        # Each cube will have its own random order during actual encryption
+        base_order = generate_cryptographic_cube_order()
+        initialize_move_dict(base_order)
+        
+        # Initialize cubes with base order (will be changed per cube during encryption)
+        cubes = initCube(inputString, base_order)
+        
+        # Encrypt cubes with full cryptographic randomness
+        encrypted_cubes, encryption_params = encrypt_with_full_cryptographic_randomness(cubes)
+        
+        # Add some random padding to increase security
+        padding = generate_cryptographic_padding_chars()
+        print(f"Added {len(padding)} cryptographically random padding characters")
         
         # Save keys and encrypted data
         key_data = {
-            'key_pool': key_pool,
-            'used_key_indices': used_key_indices,
-            'selection_method': args.selection,
+            'encryption_parameters': encryption_params,
+            'padding': padding,
+            'num_cubes': len(cubes),
             'metadata': {
-                'num_cubes': len(cubes),
-                'key_pool_size': len(key_pool),
-                'moves_per_key': args.num_moves,
-                'encryption_date': str(os.path.getctime(__file__))
+                'encryption_date': str(os.path.getctime(__file__)),
+                'full_cryptographic_randomness': True,
+                'version': '4.0'
             }
         }
         
@@ -479,61 +390,73 @@ def main():
 
         with open(args.output, 'w') as of:
             for cube in encrypted_cubes:
-                of.write(cubeToString(cube) + "\n")
+                of.write(cubeToString(cube))
+            # Add padding to the end
+            of.write(padding)
 
-        print(f"Encryption complete. Encrypted {len(cubes)} cubes using {len(key_pool)} key pool.")
-        print(f"Output: {args.output}, Keys: {args.key}")
+        print(f"\nEncryption complete!")
+        print(f"Encrypted {len(cubes)} cubes with fully random parameters:")
+        for i, params in enumerate(encryption_params):
+            print(f"  Cube {i}: order={params['cube_order']}, moves={params['num_moves']}")
+        print(f"Output: {args.output}")
+        print(f"Keys: {args.key}")
 
     elif args.mode == "decrypt":
         try:
             with open(args.key, 'r') as kf:
                 key_data = json.load(kf)
             
-            key_pool = key_data['key_pool']
-            used_key_indices = key_data['used_key_indices']
+            encryption_params = key_data['encryption_parameters']
+            padding = key_data.get('padding', '')
             
         except Exception as e:
             print(f"Error reading key file: {e}")
             exit(1)
 
-        print(f"Decrypting {len(cubes)} cubes with {len(key_pool)} key pool...")
+        # Read encrypted data (remove padding)
+        if args.file:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                encrypted_data = f.read()
+        else:
+            encrypted_data = args.string
+            
+        # Remove padding if present
+        if padding and encrypted_data.endswith(padding):
+            encrypted_data = encrypted_data[:-len(padding)]
+
+        print(f"Decrypting {len(encryption_params)} cubes...")
         
-        for i, cube in enumerate(cubes):
-            if i < len(used_key_indices):
-                key_index = used_key_indices[i]
-                moves = key_pool[key_index]
-                decrypted_cube = decryptCube(cube, moves)
-                cube.cube = decrypted_cube.cube
-                print(f"Cube {i} decrypted with key {key_index}")
-            else:
-                print(f"Warning: No key available for cube {i}")
+        decrypted_cubes = []
+        total_chars_processed = 0
+        
+        for i, params in enumerate(encryption_params):
+            cube_order = params['cube_order']
+            moves = params['moves']
+            original_size = params['original_cube_size']
+            
+            # Initialize move dictionary for this cube's order
+            initialize_move_dict(cube_order)
+            
+            # Extract the portion of encrypted data for this cube
+            cube_data = encrypted_data[total_chars_processed:total_chars_processed + original_size]
+            total_chars_processed += original_size
+            
+            if len(cube_data) < original_size:
+                print(f"Warning: Not enough data for cube {i}, expected {original_size}, got {len(cube_data)}")
+                break
+                
+            # Create and decrypt cube
+            cube = Cube(cube_order, cube_data)
+            decrypted_cube = decryptCube(cube, moves)
+            decrypted_cubes.append(decrypted_cube)
+            
+            print(f"Cube {i} decrypted with order {cube_order}, {len(moves)} moves")
 
         with open(args.output, 'w') as of:
-            for cube in cubes:
-                of.write(cubeToString(cube) + "\n")
+            for cube in decrypted_cubes:
+                of.write(cubeToString(cube))
 
-        print(f"Decryption complete. Output: {args.output}")
-
-    elif args.mode == "bruteforce":
-        try:
-            with open(args.key, 'r') as kf:
-                key_data = json.load(kf)
-            key_pool = key_data['key_pool']
-        except Exception as e:
-            print(f"Error reading key file: {e}")
-            exit(1)
-
-        print(f"Brute force decrypting {len(cubes)} cubes with {len(key_pool)} key pool...")
-        print(f"Max attempts per cube: {args.max_attempts}")
-        
-        results = brute_force_decrypt(cubes, key_pool, args.max_attempts)
-        summary = save_decryption_results(results, args.results_dir)
-        
-        print(f"\nBrute force decryption complete!")
-        print(f"Results saved to: {args.results_dir}")
-        print(f"\nSummary:")
-        for item in summary:
-            print(f"  Cube {item['cube_index']}: score={item['best_score']:.3f}, key={item['best_key']}")
+        print(f"Decryption complete! Output: {args.output}")
 
 
 if __name__ == "__main__":
